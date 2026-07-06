@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#0B0F14">
-<title>รายรับ-รายจ่าย NC</title>
+<title>MoneyNC</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -187,7 +187,7 @@ nav button.on{color:var(--gold)}
 <body>
 <div id="app">
   <header>
-    <h1>รายรับ-รายจ่าย NC</h1>
+    <h1>MoneyNC</h1>
     <button id="syncBadge" onclick="syncNow(true)"><span id="syncDot"></span><span id="syncText">…</span></button>
   </header>
 
@@ -318,8 +318,8 @@ nav button.on{color:var(--gold)}
 <script>
 'use strict';
 /* ================= ตั้งค่า ================= */
-const GAS_URL = 'REPLACE_WITH_GAS_URL'; // วาง URL ของ GAS Web App (ลงท้าย /exec)
-const TOKEN = 'NC2026-7f3a9c1e4b8d';     // ต้องตรงกับ TOKEN ใน Code.gs
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyj1ROPrqAWyQotkgNjRjGJZ6ePy0YlQB1nWWfP2PuFsxpaBheKpt9HOwoUOi3AHSdiJQ/exec'; // วาง URL ของ GAS Web App (ลงท้าย /exec)
+const TOKEN = 'MoneyNC-NarongChuaysongNC';     // ต้องตรงกับ TOKEN ใน Code.gs
 
 /* ประเภท(กลุ่ม): income=รายรับ, saving=เงินออม, expense=รายจ่าย */
 const TYPE_LABEL = { income:'รายรับ', saving:'เงินออม', expense:'รายจ่าย' };
