@@ -195,8 +195,36 @@ nav button.on{color:var(--gold)}
 
 #toast{position:fixed; left:50%; bottom:100px; transform:translateX(-50%) translateY(20px); background:var(--surface2);
   border:1px solid var(--line); color:var(--text); padding:11px 20px; border-radius:99px; font-size:14px; opacity:0;
-  pointer-events:none; transition:all .25s; z-index:20; white-space:nowrap; max-width:90%; text-align:center}
+  pointer-events:none; transition:all .25s; z-index:70; white-space:nowrap; max-width:90%; text-align:center}
 #toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+
+/* ---------- ล็อก / ความปลอดภัย ---------- */
+#lockScreen{position:fixed; inset:0; z-index:50; background:var(--bg); display:none; flex-direction:column; align-items:center; justify-content:center; padding:24px}
+#lockScreen.show{display:flex}
+#pinModal{position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; padding:20px}
+#pinModal.show{display:flex}
+.pinCard{background:var(--surface); border:1px solid var(--line); border-radius:22px; padding:26px 20px 20px; width:100%; max-width:340px; display:flex; flex-direction:column; align-items:center}
+.lockLogo{width:60px; height:60px; border-radius:18px; background:linear-gradient(160deg,var(--gold),var(--gold-dim)); display:flex; align-items:center; justify-content:center; margin-bottom:16px; font-size:27px}
+.lockTitle{font-size:19px; font-weight:700; margin:0 0 4px}
+.lockSub{font-size:13.5px; color:var(--muted); margin-bottom:22px; min-height:19px; text-align:center; padding:0 10px}
+.lockSub.err{color:var(--expense)}
+.pinDots{display:flex; gap:14px; margin-bottom:24px}
+.pinDots i{width:14px; height:14px; border-radius:50%; background:var(--surface2); border:1px solid var(--line); transition:all .12s}
+.pinDots i.on{background:var(--gold); border-color:var(--gold)}
+.pinDots.shake{animation:shake .4s}
+@keyframes shake{0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-9px)} 40%,80%{transform:translateX(9px)}}
+.pinPad{display:grid; grid-template-columns:repeat(3,70px); gap:15px}
+.pinPad .pk{height:70px; border-radius:50%; background:var(--surface); font-size:25px; font-weight:500; display:flex; align-items:center; justify-content:center; transition:background .1s; color:var(--text)}
+.pinPad .pk:active{background:var(--surface2)}
+.pinPad .pk.fn{font-size:21px; color:var(--muted); background:transparent}
+.pinPad .pk.bio{background:transparent; color:var(--saving)}
+.pinPad .pk.bio svg{width:30px; height:30px; stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round}
+.pinPad .pk.empty{background:transparent; pointer-events:none}
+.secRow{display:flex; justify-content:space-between; align-items:center; padding:13px 2px; font-size:15px}
+.secRow+.secRow{border-top:1px solid var(--line)}
+#btnChangePin{width:100%; margin-top:12px; padding:12px 0; border-radius:12px; background:var(--bg); border:1px solid var(--line); color:var(--text); font-size:14.5px; font-weight:600; display:none}
+.secNote{font-size:12px; color:var(--muted); line-height:1.6; margin-top:14px}
+
 @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
 </style>
 </head>
@@ -353,6 +381,13 @@ nav button.on{color:var(--gold)}
         <div class="chartLegend"><span><i style="background:var(--income)"></i>รายรับ</span><span><i style="background:var(--expense)"></i>รายจ่าย</span><span><i style="background:var(--saving)"></i>เงินออม</span></div>
       </div>
       <div class="panel"><h3>รายจ่ายตามรายการ</h3><div id="catBreakdown"></div></div>
+      <div class="panel">
+        <h3>ความปลอดภัย</h3>
+        <div class="secRow"><span>ล็อกแอปด้วย PIN</span><div class="sw" id="swLock" onclick="toggleLock()"><i></i></div></div>
+        <div class="secRow"><span>ปลดล็อกด้วยลายนิ้วมือ / ใบหน้า</span><div class="sw" id="swBio" onclick="toggleBio()"><i></i></div></div>
+        <button id="btnChangePin" onclick="startChangePin()">เปลี่ยน PIN</button>
+        <div class="secNote">ล็อกหน้าจอนี้กันคนหยิบมือถือไปเปิดดูข้อมูล — ยังไม่เข้ารหัสข้อมูลในเครื่อง และไม่ได้กันการเข้าถึง URL ของ GAS โดยตรง</div>
+      </div>
     </section>
   </main>
 
@@ -372,6 +407,24 @@ nav button.on{color:var(--gold)}
   </div></nav>
 </div>
 <div id="toast"></div>
+
+<div id="lockScreen">
+  <div class="lockLogo">🔒</div>
+  <div class="lockTitle" id="lockTitle">ปลดล็อก</div>
+  <div class="lockSub" id="lockSub">ใส่ PIN 6 หลัก</div>
+  <div class="pinDots" id="lockDots"></div>
+  <div class="pinPad" id="lockPad"></div>
+</div>
+
+<div id="pinModal">
+  <div class="pinCard">
+    <div class="lockTitle" id="pinModalTitle">ตั้ง PIN</div>
+    <div class="lockSub" id="pinModalSub">ตั้ง PIN 6 หลัก</div>
+    <div class="pinDots" id="modalDots"></div>
+    <div class="pinPad" id="modalPad" style="margin-top:8px"></div>
+    <button onclick="closePinModal()" style="margin-top:18px; color:var(--muted); font-size:14px">ยกเลิก</button>
+  </div>
+</div>
 
 <script>
 'use strict';
@@ -878,6 +931,7 @@ function renderSummary(){
   netEl.style.color = net<0?'var(--expense)':'var(--gold)';
   drawChart();
   renderCatBreakdown();
+  updateSecurityUI();
 }
 function renderCatBreakdown(){
   const box = document.getElementById('catBreakdown');
@@ -1183,10 +1237,166 @@ function toast(msg){
 }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
+/* ================= ล็อก / ความปลอดภัย ================= */
+const LK = { salt:'nc_pin_salt', hash:'nc_pin_hash', en:'nc_lock_enabled', bioEn:'nc_bio_enabled', bioId:'nc_bio_credid', hid:'nc_hidden_at' };
+const RELOCK_MS = 60000; // ถ้าสลับไปแอปอื่นเกิน 60 วิ แล้วกลับมา ให้ล็อกใหม่
+const FINGER_SVG = '<svg viewBox="0 0 24 24"><path d="M12 11v3a9 9 0 0 1-1.2 4.5M8.3 6.3a5 5 0 0 1 7.7 4.2v1.5M5.5 9a8 8 0 0 1 1-1M6.5 15.5A9 9 0 0 0 7 13v-2a5 5 0 0 1 .3-1.7M12 11v2a13 13 0 0 1-.7 4.3M15.5 12v1a16 16 0 0 1-.5 4"/></svg>';
+let unlocked = false, lockBuf = '', modalState = null;
+
+function lockEnabled(){ return localStorage.getItem(LK.en)==='1' && !!localStorage.getItem(LK.hash); }
+function bioEnabled(){ return localStorage.getItem(LK.bioEn)==='1' && !!localStorage.getItem(LK.bioId); }
+function b64(buf){ return btoa(String.fromCharCode.apply(null, new Uint8Array(buf))); }
+function unb64(s){ return Uint8Array.from(atob(s), c=>c.charCodeAt(0)); }
+
+async function pbkdf2_(pin, saltB64){
+  const salt = unb64(saltB64);
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name:'PBKDF2', salt, iterations:120000, hash:'SHA-256' }, key, 256);
+  return b64(bits);
+}
+async function setPin_(pin){
+  const salt = b64(crypto.getRandomValues(new Uint8Array(16)));
+  localStorage.setItem(LK.salt, salt);
+  localStorage.setItem(LK.hash, await pbkdf2_(pin, salt));
+  localStorage.setItem(LK.en, '1');
+}
+async function verifyPin_(pin){
+  const salt = localStorage.getItem(LK.salt), hash = localStorage.getItem(LK.hash);
+  if (!salt || !hash) return false;
+  return (await pbkdf2_(pin, salt)) === hash;
+}
+function disableLock_(){ [LK.salt,LK.hash,LK.en,LK.bioEn,LK.bioId].forEach(k=>localStorage.removeItem(k)); }
+
+async function bioRegister_(){
+  if (!window.PublicKeyCredential) throw new Error('อุปกรณ์/เบราว์เซอร์นี้ไม่รองรับลายนิ้วมือ');
+  const cred = await navigator.credentials.create({ publicKey:{
+    challenge: crypto.getRandomValues(new Uint8Array(32)),
+    rp:{ name:'รายรับ-รายจ่าย NC', id: location.hostname },
+    user:{ id: crypto.getRandomValues(new Uint8Array(16)), name:'money-nc', displayName:'MoneyNC' },
+    pubKeyCredParams:[{ type:'public-key', alg:-7 }, { type:'public-key', alg:-257 }],
+    authenticatorSelection:{ authenticatorAttachment:'platform', userVerification:'required' },
+    timeout:60000, attestation:'none'
+  }});
+  localStorage.setItem(LK.bioId, b64(cred.rawId));
+  localStorage.setItem(LK.bioEn, '1');
+}
+async function bioUnlock_(){
+  const id = localStorage.getItem(LK.bioId);
+  if (!id) throw new Error('ยังไม่ได้ตั้งลายนิ้วมือ');
+  await navigator.credentials.get({ publicKey:{
+    challenge: crypto.getRandomValues(new Uint8Array(32)),
+    allowCredentials:[{ type:'public-key', id: unb64(id), transports:['internal'] }],
+    userVerification:'required', timeout:60000, rpId: location.hostname
+  }});
+  return true; // ถ้าไม่ throw = อุปกรณ์ยืนยันตัวตนผ่านแล้ว
+}
+
+/* ---- หน้าล็อก ---- */
+function makePad(padEl, onDigit, onDel, withBio){
+  padEl.innerHTML = '';
+  ['1','2','3','4','5','6','7','8','9','bio','0','del'].forEach(k => {
+    const b = document.createElement('button');
+    if (k==='bio'){
+      if (withBio && bioEnabled()){ b.className='pk bio'; b.innerHTML=FINGER_SVG; b.onclick=onLockBio; }
+      else { b.className='pk empty'; }
+    } else if (k==='del'){ b.className='pk fn'; b.textContent='⌫'; b.onclick=onDel; }
+    else { b.className='pk'; b.textContent=k; b.onclick=()=>onDigit(k); }
+    padEl.appendChild(b);
+  });
+}
+function dots(el, n){ el.innerHTML=''; for(let i=0;i<6;i++){ const d=document.createElement('i'); if(i<n) d.classList.add('on'); el.appendChild(d); } }
+function shake(el){ el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
+
+function openLockScreen(){
+  unlocked = false; lockBuf = '';
+  document.getElementById('lockSub').className = 'lockSub';
+  document.getElementById('lockSub').textContent = bioEnabled() ? 'ใส่ PIN หรือแตะลายนิ้วมือ' : 'ใส่ PIN 6 หลัก';
+  dots(document.getElementById('lockDots'), 0);
+  makePad(document.getElementById('lockPad'), onLockDigit, onLockDel, true);
+  document.getElementById('lockScreen').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeLockScreen(){ unlocked = true; document.getElementById('lockScreen').classList.remove('show'); document.body.style.overflow=''; }
+function onLockDigit(d){
+  if (lockBuf.length>=6) return;
+  lockBuf += d; dots(document.getElementById('lockDots'), lockBuf.length);
+  if (lockBuf.length===6) verifyPin_(lockBuf).then(ok => {
+    if (ok) closeLockScreen();
+    else { const sub=document.getElementById('lockSub'); sub.textContent='PIN ไม่ถูกต้อง'; sub.className='lockSub err'; shake(document.getElementById('lockDots')); lockBuf=''; setTimeout(()=>dots(document.getElementById('lockDots'),0),400); }
+  });
+}
+function onLockDel(){ lockBuf = lockBuf.slice(0,-1); dots(document.getElementById('lockDots'), lockBuf.length); }
+function onLockBio(){
+  const sub=document.getElementById('lockSub');
+  bioUnlock_().then(()=>closeLockScreen()).catch(()=>{ sub.textContent='ยืนยันไม่สำเร็จ ลองใหม่หรือใส่ PIN'; sub.className='lockSub err'; });
+}
+
+/* ---- modal ตั้ง/เปลี่ยน/ปิด PIN ---- */
+function openPinModal(mode, onDone){
+  modalState = { mode, step:1, first:'', buf:'', onDone };
+  document.getElementById('pinModal').classList.add('show');
+  setModalText(); dots(document.getElementById('modalDots'), 0);
+  makePad(document.getElementById('modalPad'), onModalDigit, onModalDel, false);
+}
+function closePinModal(){ document.getElementById('pinModal').classList.remove('show'); modalState=null; updateSecurityUI(); }
+function setModalText(){
+  const T=document.getElementById('pinModalTitle'), S=document.getElementById('pinModalSub');
+  S.className='lockSub';
+  if (modalState.mode==='disable'){ T.textContent='ปิดล็อก'; S.textContent='ใส่ PIN เพื่อยืนยัน'; }
+  else if (modalState.step===1){ T.textContent = modalState.mode==='change'?'เปลี่ยน PIN':'ตั้ง PIN'; S.textContent='ตั้ง PIN 6 หลัก'; }
+  else { T.textContent='ยืนยัน PIN'; S.textContent='ใส่ PIN อีกครั้งให้ตรงกัน'; }
+}
+function onModalDigit(d){
+  if (!modalState || modalState.buf.length>=6) return;
+  modalState.buf += d; dots(document.getElementById('modalDots'), modalState.buf.length);
+  if (modalState.buf.length===6) handleModalComplete();
+}
+function onModalDel(){ if(!modalState) return; modalState.buf=modalState.buf.slice(0,-1); dots(document.getElementById('modalDots'), modalState.buf.length); }
+async function handleModalComplete(){
+  const buf = modalState.buf; modalState.buf='';
+  const S = document.getElementById('pinModalSub');
+  if (modalState.mode==='disable'){
+    if (await verifyPin_(buf)){ disableLock_(); closePinModal(); toast('ปิดล็อกแล้ว'); }
+    else { S.textContent='PIN ไม่ถูกต้อง'; S.className='lockSub err'; shake(document.getElementById('modalDots')); setTimeout(()=>dots(document.getElementById('modalDots'),0),400); }
+    return;
+  }
+  // setup / change
+  if (modalState.step===1){ modalState.first=buf; modalState.step=2; setModalText(); dots(document.getElementById('modalDots'),0); }
+  else {
+    if (buf===modalState.first){ await setPin_(buf); const cb=modalState.onDone; closePinModal(); if(cb) cb(); }
+    else { modalState.step=1; modalState.first=''; setModalText(); S.textContent='PIN ไม่ตรงกัน ลองใหม่'; S.className='lockSub err'; shake(document.getElementById('modalDots')); setTimeout(()=>dots(document.getElementById('modalDots'),0),400); }
+  }
+}
+
+/* ---- ปุ่มตั้งค่าในหน้าสรุป ---- */
+function updateSecurityUI(){
+  const swL=document.getElementById('swLock'), swB=document.getElementById('swBio'), chg=document.getElementById('btnChangePin');
+  if (!swL) return;
+  const on = lockEnabled();
+  swL.classList.toggle('on', on);
+  swB.classList.toggle('on', bioEnabled());
+  chg.style.display = on ? 'block' : 'none';
+}
+function toggleLock(){
+  if (lockEnabled()) openPinModal('disable', null);
+  else openPinModal('setup', ()=>{ toast('ตั้ง PIN แล้ว จะล็อกทุกครั้งที่เปิดแอป'); updateSecurityUI(); });
+}
+function startChangePin(){
+  if (!lockEnabled()) return;
+  openPinModal('change', ()=>{ toast('เปลี่ยน PIN แล้ว'); });
+}
+async function toggleBio(){
+  if (!lockEnabled()) return toast('ตั้ง PIN ก่อน แล้วค่อยเปิดลายนิ้วมือ');
+  if (bioEnabled()){ localStorage.removeItem(LK.bioEn); localStorage.removeItem(LK.bioId); updateSecurityUI(); toast('ปิดลายนิ้วมือแล้ว'); return; }
+  try { await bioRegister_(); updateSecurityUI(); toast('เปิดลายนิ้วมือแล้ว'); }
+  catch(e){ toast(e.message || 'ตั้งลายนิ้วมือไม่สำเร็จ'); }
+}
+
 /* ================= เริ่มต้น ================= */
 (async function init(){
   buildNumpad();
   resetEntry();
+  if (lockEnabled()) openLockScreen();   // ล็อกทุกครั้งที่เปิดแอป
   if (!gasConfigured()) document.getElementById('setupBanner').style.display = 'block';
   try {
     const [recs, recs2, recs3] = await Promise.all([idbAll('records'), idbAll('recurring'), idbAll('debtors')]);
@@ -1202,7 +1412,16 @@ function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;',
   syncNow();
   window.addEventListener('online', () => syncNow());
   window.addEventListener('offline', updateSyncUI);
-  document.addEventListener('visibilitychange', () => { if(!document.hidden) syncNow(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden){ localStorage.setItem(LK.hid, String(Date.now())); }
+    else {
+      if (lockEnabled() && unlocked){
+        const t = Number(localStorage.getItem(LK.hid) || 0);
+        if (Date.now() - t > RELOCK_MS) openLockScreen();
+      }
+      syncNow();
+    }
+  });
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 })();
 </script>
