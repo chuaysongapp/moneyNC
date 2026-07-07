@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#0B0F14">
-<title>MoneyNC</title>
+<title>รายรับ-รายจ่าย NC</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -187,7 +187,7 @@ nav button.on{color:var(--gold)}
 <body>
 <div id="app">
   <header>
-    <h1>MoneyNC</h1>
+    <h1>รายรับ-รายจ่าย NC</h1>
     <button id="syncBadge" onclick="syncNow(true)"><span id="syncDot"></span><span id="syncText">…</span></button>
   </header>
 
@@ -318,8 +318,8 @@ nav button.on{color:var(--gold)}
 <script>
 'use strict';
 /* ================= ตั้งค่า ================= */
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbyj1ROPrqAWyQotkgNjRjGJZ6ePy0YlQB1nWWfP2PuFsxpaBheKpt9HOwoUOi3AHSdiJQ/exec'; // วาง URL ของ GAS Web App (ลงท้าย /exec)
-const TOKEN = 'MoneyNC-NarongChuaysongNC';     // ต้องตรงกับ TOKEN ใน Code.gs
+const GAS_URL = 'REPLACE_WITH_GAS_URL'; // วาง URL ของ GAS Web App (ลงท้าย /exec)
+const TOKEN = 'NC2026-7f3a9c1e4b8d';     // ต้องตรงกับ TOKEN ใน Code.gs
 
 /* ประเภท(กลุ่ม): income=รายรับ, saving=เงินออม, expense=รายจ่าย */
 const TYPE_LABEL = { income:'รายรับ', saving:'เงินออม', expense:'รายจ่าย' };
@@ -386,6 +386,16 @@ resetEntryState();
 function resetEntryState(){ entry = { type:'expense', amount:'', category:null, editingId:null }; }
 function isRecurRecord(rec){ return String(rec.id).indexOf('r_') === 0; }
 function pad2(n){ return String(n).padStart(2,'0'); }
+/* หาเดือน (YYYY-MM) ของรายการ: รายการประจำใช้จาก ID เสมอ (วันที่จาก Sheets อาจเพี้ยนโซนเวลา) */
+function recYm(r){ const m = String(r.id).match(/^r_.+_(\d{4}-\d{2})$/); if (m) return m[1]; return String(r.date).slice(0,7); }
+/* คืนวันที่ YYYY-MM-DD ที่สะอาด (กู้จาก ISO ที่เพี้ยนโซนเวลา ถ้าจำเป็น) */
+function recDate(r){
+  const d = String(r.date);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  const t = new Date(d);
+  if (!isNaN(t.getTime())){ const b = new Date(t.getTime() + 7*3600000); return b.getUTCFullYear()+'-'+pad2(b.getUTCMonth()+1)+'-'+pad2(b.getUTCDate()); }
+  return recYm(r) + '-01';
+}
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
 function monthStr(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1); }
 function daysInMonth(ym){ const p=ym.split('-').map(Number); return new Date(p[0], p[1], 0).getDate(); }
@@ -493,12 +503,12 @@ function templatesByType(type){
     .sort((a,b) => (SORT_BY_ID[a.id] ?? 999) - (SORT_BY_ID[b.id] ?? 999) || String(a.category).localeCompare(b.category,'th'));
 }
 function adhocByType(type, ym){
-  return [...records.values()].filter(r => !r.deleted && !isRecurRecord(r) && r.type === type && String(r.date).startsWith(ym))
+  return [...records.values()].filter(r => !r.deleted && !isRecurRecord(r) && r.type === type && recYm(r) === ym)
     .sort((a,b) => String(b.updated_at).localeCompare(String(a.updated_at)));
 }
 function groupTotal(type, ym){
   let s = 0;
-  records.forEach(r => { if (!r.deleted && r.type === type && String(r.date).startsWith(ym)) s += Number(r.amount)||0; });
+  records.forEach(r => { if (!r.deleted && r.type === type && recYm(r) === ym) s += Number(r.amount)||0; });
   return s;
 }
 function renderWorksheet(){
@@ -716,10 +726,10 @@ function renderHistory(){
   document.getElementById('monthLabelH').textContent = thaiMonth(viewMonth);
   const list = document.getElementById('historyList');
   // ไม่แสดงรายการยอด 0 เพื่อไม่ให้รก
-  const recs = activeRecords().filter(r => String(r.date).startsWith(viewMonth) && Number(r.amount) !== 0);
+  const recs = activeRecords().filter(r => recYm(r) === viewMonth && Number(r.amount) !== 0);
   if (!recs.length){ list.innerHTML = '<div class="empty">ยังไม่มีรายการในเดือนนี้</div>'; return; }
   const byDate = {};
-  recs.forEach(r => { (byDate[r.date] = byDate[r.date]||[]).push(r); });
+  recs.forEach(r => { const d = recDate(r); (byDate[d] = byDate[d]||[]).push(r); });
   const dates = Object.keys(byDate).sort().reverse();
   list.innerHTML = '';
   dates.forEach(d => {
@@ -748,7 +758,7 @@ function renderHistory(){
 function monthTotals(ym){
   let income=0, saving=0, expense=0;
   records.forEach(r => {
-    if (r.deleted || !String(r.date).startsWith(ym)) return;
+    if (r.deleted || recYm(r) !== ym) return;
     if (r.type==='income') income += Number(r.amount)||0;
     else if (r.type==='saving') saving += Number(r.amount)||0;
     else expense += Number(r.amount)||0;
@@ -774,7 +784,7 @@ function renderCatBreakdown(){
   const box = document.getElementById('catBreakdown');
   const sums = {};
   records.forEach(r => {
-    if (r.deleted || r.type!=='expense' || !String(r.date).startsWith(viewMonth)) return;
+    if (r.deleted || r.type!=='expense' || recYm(r) !== viewMonth) return;
     const v = Number(r.amount)||0; if (v===0) return;
     sums[r.category] = (sums[r.category]||0) + v;
   });
