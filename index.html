@@ -291,7 +291,7 @@ nav button.on{color:var(--gold)}
         <div class="card"><small>รายรับ</small><div class="v in" id="sumIn">฿0</div></div>
         <div class="card"><small>รายจ่าย</small><div class="v ex" id="sumEx">฿0</div></div>
         <div class="card"><small>เงินออม</small><div class="v sv" id="sumSv">฿0</div></div>
-        <div class="card"><small>รวมเงินออกทั้งหมด</small><div class="v" id="sumOut">฿0</div></div>
+        <div class="card"><small>หักจากเงินเดือน (สหกรณ์+กบข.)</small><div class="v" id="sumOut">฿0</div></div>
       </div>
       <div class="panel"><h3>ย้อนหลัง 6 เดือน</h3><canvas id="chart"></canvas>
         <div class="chartLegend"><span><i style="background:var(--income)"></i>รายรับ</span><span><i style="background:var(--expense)"></i>รายจ่าย</span><span><i style="background:var(--saving)"></i>เงินออม</span></div>
@@ -318,7 +318,7 @@ nav button.on{color:var(--gold)}
 <script>
 'use strict';
 /* ================= ตั้งค่า ================= */
-const GAS_URL = 'REPLACE_WITH_GAS_URL'; // วาง URL ของ GAS Web App (ลงท้าย /exec)
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyj1ROPrqAWyQotkgNjRjGJZ6ePy0YlQB1nWWfP2PuFsxpaBheKpt9HOwoUOi3AHSdiJQ/exec'; // GAS Web App (/exec)
 const TOKEN = 'NC2026-7f3a9c1e4b8d';     // ต้องตรงกับ TOKEN ใน Code.gs
 
 /* ประเภท(กลุ่ม): income=รายรับ, saving=เงินออม, expense=รายจ่าย */
@@ -370,6 +370,8 @@ SEED_ITEMS.forEach((s, i) => { SORT_BY_ID[s.id] = i; });
 
 /* กฎคำนวณอัตโนมัติ: กบข. = 5% ของ (เงินเดือน + เงินเดือนตกเบิก) */
 const AUTO_RULES = { 'seed_16': { rate:0.05, of:['seed_02','seed_03'] } };
+/* เงินออมที่ "หักจากรายรับ" (ลดคงเหลือ) — เฉพาะสหกรณ์และ กบข. ที่เหลือแค่บันทึกไว้ ไม่ลดคงเหลือ */
+const SAVING_DEDUCT = new Set(['seed_15', 'seed_16']);
 /* timestamp ต่ำสำหรับข้อมูลที่ระบบสร้างเอง เพื่อให้การแก้ของผู้ใช้ชนะเสมอเวลาซิงก์ */
 const AUTO_TS = '2000-01-01T00:00:00.000Z';
 
@@ -388,6 +390,12 @@ function isRecurRecord(rec){ return String(rec.id).indexOf('r_') === 0; }
 function pad2(n){ return String(n).padStart(2,'0'); }
 /* หาเดือน (YYYY-MM) ของรายการ: รายการประจำใช้จาก ID เสมอ (วันที่จาก Sheets อาจเพี้ยนโซนเวลา) */
 function recYm(r){ const m = String(r.id).match(/^r_.+_(\d{4}-\d{2})$/); if (m) return m[1]; return String(r.date).slice(0,7); }
+/* template id ของ record (รายการประจำ r_<tid>_YYYY-MM); ad-hoc คืน id ตัวเอง */
+function tmplId(r){ const m = String(r.id).match(/^r_(.+)_\d{4}-\d{2}$/); return m ? m[1] : String(r.id); }
+/* เงินออมรายการนี้หักจากรายรับไหม (ลดคงเหลือ) */
+function savingDeducts(r){ return SAVING_DEDUCT.has(tmplId(r)); }
+/* ผลรวมเงินออมที่หักจากรายรับในเดือนนั้น */
+function deductedSaving(ym){ let s = 0; records.forEach(r => { if (!r.deleted && r.type==='saving' && recYm(r)===ym && savingDeducts(r)) s += Number(r.amount)||0; }); return s; }
 /* คืนวันที่ YYYY-MM-DD ที่สะอาด (กู้จาก ISO ที่เพี้ยนโซนเวลา ถ้าจำเป็น) */
 function recDate(r){
   const d = String(r.date);
@@ -537,7 +545,10 @@ function renderWorksheet(){
         if (type === 'income') inp.className = 'income';
         inp.addEventListener('input', () => onWsInput(t.id, inp.value));
         inp.addEventListener('change', () => onWsChange(t.id, inp.value));
-        const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = t.category;
+        const nm = document.createElement('div'); nm.className = 'nm';
+        if (type === 'saving' && SAVING_DEDUCT.has(t.id))
+          nm.innerHTML = escapeHtml(t.category)+'<span class="badge">หักจากรายรับ</span>';
+        else nm.textContent = t.category;
         row.appendChild(nm); row.appendChild(inp);
       }
       g.appendChild(row);
@@ -592,13 +603,22 @@ function recomputeAutoDisplay(){
   }
 }
 function recalcWorksheet(){
-  let inc = groupTotal('income', viewMonth);
-  let sav = groupTotal('saving', viewMonth);
-  let exp = groupTotal('expense', viewMonth);
+  // รีเฟรชตัวเลข กบข. (อัตโนมัติ) บนจอให้ตรงกับ record เสมอ
+  for (const tid in AUTO_RULES){
+    const el = document.getElementById('ro-'+tid);
+    if (el){ const r = records.get('r_'+tid+'_'+viewMonth); el.textContent = fmtMoney(r ? Number(r.amount)||0 : 0); }
+  }
+  const inc = groupTotal('income', viewMonth);
+  const savAll = groupTotal('saving', viewMonth);
+  const exp = groupTotal('expense', viewMonth);
+  const savDed = deductedSaving(viewMonth);   // สหกรณ์ + กบข.
+  const savOther = savAll - savDed;           // สลาก/บัญชี — ไม่หักจากคงเหลือ
   setText('sub-income', '+'+fmtMoney(inc));
-  setText('sub-saving', '−'+fmtMoney(sav));
+  const savEl = document.getElementById('sub-saving');
+  if (savEl) savEl.innerHTML = '−'+escapeHtml(fmtMoney(savDed)) +
+    (savOther>0 ? ' <span style="color:var(--muted);font-weight:500">· ออม '+escapeHtml(fmtMoney(savOther))+'</span>' : '');
   setText('sub-expense', '−'+fmtMoney(exp));
-  const bal = inc - sav - exp;
+  const bal = inc - savDed - exp;             // หักเฉพาะเงินออมที่หักจากรายรับ
   const bv = document.getElementById('wsBalanceVal');
   bv.textContent = (bal<0?'−':'')+'฿'+fmtMoney(Math.abs(bal));
   bv.style.color = bal < 0 ? 'var(--expense)' : 'var(--gold)';
@@ -769,11 +789,12 @@ function renderSummary(){
   document.getElementById('monthLabelS').textContent = thaiMonth(viewMonth);
   ensureMonth(viewMonth);
   const t = monthTotals(viewMonth);
-  const net = t.income - t.saving - t.expense;
+  const savDed = deductedSaving(viewMonth);
+  const net = t.income - savDed - t.expense;
   document.getElementById('sumIn').textContent = '฿'+fmtMoney(t.income);
   document.getElementById('sumEx').textContent = '฿'+fmtMoney(t.expense);
   document.getElementById('sumSv').textContent = '฿'+fmtMoney(t.saving);
-  document.getElementById('sumOut').textContent = '฿'+fmtMoney(t.saving + t.expense);
+  document.getElementById('sumOut').textContent = '฿'+fmtMoney(savDed);
   const netEl = document.getElementById('sumNet');
   netEl.textContent = (net<0?'−':'')+'฿'+fmtMoney(Math.abs(net));
   netEl.style.color = net<0?'var(--expense)':'var(--gold)';

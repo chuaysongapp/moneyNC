@@ -1,5 +1,5 @@
 /* Service Worker — รายรับ-รายจ่าย NC */
-const CACHE = 'money-nc-v5';
+const CACHE = 'money-nc-v6';
 const ASSETS = [
   './',
   './index.html',
