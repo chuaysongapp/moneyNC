@@ -152,6 +152,22 @@ main{flex:1; padding:0 16px 108px}
 .sw i{position:absolute; top:3px; left:3px; width:19px; height:19px; border-radius:50%; background:#fff; transition:left .15s}
 .sw.on i{left:20px}
 #addRecurBtn{width:100%; padding:14px 0; border-radius:14px; background:var(--surface); border:1px dashed var(--gold-dim); color:var(--gold); font-size:15px; font-weight:600; margin-top:4px}
+
+/* ---------- ลูกหนี้ ---------- */
+.debtorHead{background:linear-gradient(160deg,#101a24,var(--surface) 60%); border:1px solid var(--saving); border-radius:var(--radius); padding:16px 18px; margin:12px 0 4px; display:flex; justify-content:space-between; align-items:flex-end}
+.debtorHead small{color:var(--muted); font-size:13px; display:block; margin-bottom:4px}
+.debtorHead .oweVal{font-size:26px; font-weight:800; font-variant-numeric:tabular-nums; color:var(--saving)}
+.debtorHead .dsub{font-size:12.5px; color:var(--muted); text-align:right; max-width:45%}
+.debtorItem{display:flex; align-items:center; gap:12px; background:var(--surface); border-radius:14px; padding:13px 15px; margin-bottom:8px}
+.debtorItem.paid{opacity:.5}
+.debtorItem.paid .damt{text-decoration:line-through}
+.debtorItem .dinfo{flex:1; min-width:0}
+.debtorItem .dinfo b{font-size:15px; font-weight:600; display:block}
+.debtorItem .dinfo small{color:var(--muted); font-size:12.5px; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.debtorItem .damt{font-variant-numeric:tabular-nums; font-size:16px; font-weight:700; color:var(--saving)}
+#addDebtorBtn{width:100%; padding:14px 0; border-radius:14px; background:var(--surface); border:1px dashed var(--saving); color:var(--saving); font-size:15px; font-weight:600; margin-top:4px}
+.paidToggle{width:100%; padding:12px 0; border-radius:12px; background:var(--bg); border:1px solid var(--line); color:var(--muted); font-size:14.5px; font-weight:600}
+.paidToggle.on{background:rgba(76,195,138,.16); border-color:var(--income); color:var(--income)}
 .recurForm{display:none; background:var(--surface); border:1px solid var(--gold-dim); border-radius:var(--radius); padding:16px; margin-bottom:14px}
 .recurForm.show{display:block}
 .recurForm h3{margin:0 0 12px; font-size:15px; font-weight:600}
@@ -172,9 +188,9 @@ main{flex:1; padding:0 16px 108px}
 
 /* ---------- แถบล่าง ---------- */
 nav{position:fixed; bottom:0; left:0; right:0; z-index:10; background:rgba(11,15,20,.92); backdrop-filter:blur(14px); border-top:1px solid var(--line)}
-.navIn{max-width:520px; margin:0 auto; display:flex; padding:6px 4px calc(8px + env(safe-area-inset-bottom))}
-nav button{flex:1; padding:9px 0 7px; color:var(--muted); font-size:11px; display:flex; flex-direction:column; align-items:center; gap:3px; border-radius:12px}
-nav button svg{width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
+.navIn{max-width:520px; margin:0 auto; display:flex; padding:6px 2px calc(8px + env(safe-area-inset-bottom))}
+nav button{flex:1; padding:8px 0 6px; color:var(--muted); font-size:10px; display:flex; flex-direction:column; align-items:center; gap:3px; border-radius:10px}
+nav button svg{width:21px; height:21px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
 nav button.on{color:var(--gold)}
 
 #toast{position:fixed; left:50%; bottom:100px; transform:translateX(-50%) translateY(20px); background:var(--surface2);
@@ -279,6 +295,46 @@ nav button.on{color:var(--gold)}
       <button id="addRecurBtn" onclick="openRecurForm()">+ เพิ่มรายการประจำ</button>
     </section>
 
+    <!-- ลูกหนี้ -->
+    <section id="view-debtors" class="view">
+      <div class="debtorHead">
+        <div><small>ยอดค้างรวม (ยังไม่คืน)</small><div class="oweVal" id="debtorOweVal">฿0</div></div>
+        <div class="dsub" id="debtorSub">ยังไม่มีลูกหนี้</div>
+      </div>
+      <div class="recurIntro">รายชื่อคนที่ยืมเงินเราไปและยังไม่คืน — บันทึกไว้เฉยๆ ไม่หักจากคงเหลือ กด "คืนแล้ว" เมื่อได้รับคืน หรือลบทิ้งได้</div>
+      <div class="recurForm" id="debtorForm">
+        <h3 id="debtorFormTitle">เพิ่มลูกหนี้</h3>
+        <div class="fld">
+          <label>ชื่อ / ใครยืม</label>
+          <input type="text" id="dName" maxlength="40" placeholder="เช่น สมชาย">
+        </div>
+        <div class="fld two">
+          <div>
+            <label>จำนวนเงิน (บาท)</label>
+            <input type="number" id="dAmount" inputmode="decimal" placeholder="0" min="0" step="0.01">
+          </div>
+          <div>
+            <label>วันที่ยืม</label>
+            <input type="date" id="dDate" style="width:100%;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:16px;color:var(--text);color-scheme:dark">
+          </div>
+        </div>
+        <div class="fld">
+          <label>หมายเหตุ (ไม่บังคับ)</label>
+          <input type="text" id="dNote" maxlength="80" placeholder="เช่น ยืมค่าเทอมลูก">
+        </div>
+        <div class="fld">
+          <button id="dPaidBtn" class="paidToggle" onclick="toggleDebtorPaidBtn()">ทำเครื่องหมายว่าคืนแล้ว</button>
+        </div>
+        <div class="recurFormBtns">
+          <button id="recurSave" onclick="saveDebtor()">บันทึก</button>
+          <button id="dDelete" onclick="deleteDebtor()" style="flex:0 0 auto;padding:14px 18px;background:var(--bg);border:1px solid rgba(241,102,92,.4);color:var(--expense);font-weight:600;border-radius:14px;display:none">ลบ</button>
+          <button id="recurCancel" onclick="closeDebtorForm()">ยกเลิก</button>
+        </div>
+      </div>
+      <div id="debtorList"></div>
+      <button id="addDebtorBtn" onclick="openDebtorForm()">+ เพิ่มลูกหนี้</button>
+    </section>
+
     <!-- สรุป -->
     <section id="view-summary" class="view">
       <div class="monthNav">
@@ -309,6 +365,8 @@ nav button.on{color:var(--gold)}
       <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>ประวัติ</button>
     <button id="nav-recurring" onclick="switchView('recurring')">
       <svg viewBox="0 0 24 24"><path d="M17 2l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>ประจำ</button>
+    <button id="nav-debtors" onclick="switchView('debtors')">
+      <svg viewBox="0 0 24 24"><path d="M16 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4zM8 21v-2a4 4 0 0 1 4-4M2 21v-1a4 4 0 0 1 4-4M8.5 11a3 3 0 1 1 0-6"/></svg>ลูกหนี้</button>
     <button id="nav-summary" onclick="switchView('summary')">
       <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg>สรุป</button>
   </div></nav>
@@ -361,7 +419,6 @@ const SEED_ITEMS = [
   { id:'seed_28', name:'ทรูมือถือ',         type:'expense', amount:407.14 },
   { id:'seed_29', name:'ทรูเน็ตบ้าน',        type:'expense', amount:500.76 },
   { id:'seed_30', name:'ให้พ่อ',            type:'expense', amount:2500 },
-  { id:'seed_31', name:'เพื่อนยืม (ลูกหนี้)', type:'expense', amount:2000 },
   { id:'seed_32', name:'จัดฟัน',            type:'expense', amount:0 }
 ];
 /* ลำดับแสดงผลตามชีต */
@@ -372,12 +429,15 @@ SEED_ITEMS.forEach((s, i) => { SORT_BY_ID[s.id] = i; });
 const AUTO_RULES = { 'seed_16': { rate:0.05, of:['seed_02','seed_03'] } };
 /* เงินออมที่ "หักจากรายรับ" (ลดคงเหลือ) — เฉพาะสหกรณ์และ กบข. ที่เหลือแค่บันทึกไว้ ไม่ลดคงเหลือ */
 const SAVING_DEDUCT = new Set(['seed_15', 'seed_16']);
+/* รายการที่บันทึกไว้เฉยๆ ไม่หักจากคงเหลือ (เช่น เพื่อนยืม = ลูกหนี้ ไว้ดูว่าใครค้างเงินเรา) */
+const NO_DEDUCT = new Set(['seed_31']);
 /* timestamp ต่ำสำหรับข้อมูลที่ระบบสร้างเอง เพื่อให้การแก้ของผู้ใช้ชนะเสมอเวลาซิงก์ */
 const AUTO_TS = '2000-01-01T00:00:00.000Z';
 
 /* ================= สถานะ ================= */
 let records = new Map();     // id -> record (รายการจริง)
 let recurring = new Map();   // id -> แม่แบบรายการประจำ
+let debtors = new Map();     // id -> ลูกหนี้ (ยอดค้าง ไม่ผูกกับเดือน)
 let viewMonth = monthStr(new Date());
 let currentView = 'worksheet';
 let syncing = false;
@@ -396,6 +456,8 @@ function tmplId(r){ const m = String(r.id).match(/^r_(.+)_\d{4}-\d{2}$/); return
 function savingDeducts(r){ return SAVING_DEDUCT.has(tmplId(r)); }
 /* ผลรวมเงินออมที่หักจากรายรับในเดือนนั้น */
 function deductedSaving(ym){ let s = 0; records.forEach(r => { if (!r.deleted && r.type==='saving' && recYm(r)===ym && savingDeducts(r)) s += Number(r.amount)||0; }); return s; }
+/* ผลรวมรายจ่ายที่หักจากคงเหลือ (ไม่รวมรายการใน NO_DEDUCT เช่น เพื่อนยืม) */
+function deductedExpense(ym){ let s = 0; records.forEach(r => { if (!r.deleted && r.type==='expense' && recYm(r)===ym && !NO_DEDUCT.has(tmplId(r))) s += Number(r.amount)||0; }); return s; }
 /* คืนวันที่ YYYY-MM-DD ที่สะอาด (กู้จาก ISO ที่เพี้ยนโซนเวลา ถ้าจำเป็น) */
 function recDate(r){
   const d = String(r.date);
@@ -414,11 +476,12 @@ function nowTs(){ return new Date().toISOString(); }
 
 /* ================= IndexedDB ================= */
 const dbp = new Promise((res, rej) => {
-  const r = indexedDB.open('money-nc', 2);
+  const r = indexedDB.open('money-nc', 3);
   r.onupgradeneeded = () => {
     const db = r.result;
     if (!db.objectStoreNames.contains('records')) db.createObjectStore('records', { keyPath:'id' });
     if (!db.objectStoreNames.contains('recurring')) db.createObjectStore('recurring', { keyPath:'id' });
+    if (!db.objectStoreNames.contains('debtors')) db.createObjectStore('debtors', { keyPath:'id' });
   };
   r.onsuccess = () => res(r.result);
   r.onerror = () => rej(r.error);
@@ -446,6 +509,14 @@ function seedDefaults(){
     added = true;
   });
   return added;
+}
+/* ย้ายเพื่อนยืมไปแท็บลูกหนี้: ปิดแม่แบบ seed_31 ถ้ายังมีอยู่ (ไม่ลบข้อมูลเก่า) */
+function migrateFriendLoan(){
+  const t = recurring.get('seed_31');
+  if (t && !t.deleted){
+    const nt = Object.assign({}, t, { active:0, deleted:1, updated_at:nowTs(), _dirty:1 });
+    recurring.set('seed_31', nt); idbPut('recurring', nt);
+  }
 }
 function computeAuto(tid, ym){
   const rule = AUTO_RULES[tid]; if (!rule) return 0;
@@ -548,6 +619,8 @@ function renderWorksheet(){
         const nm = document.createElement('div'); nm.className = 'nm';
         if (type === 'saving' && SAVING_DEDUCT.has(t.id))
           nm.innerHTML = escapeHtml(t.category)+'<span class="badge">หักจากรายรับ</span>';
+        else if (NO_DEDUCT.has(t.id))
+          nm.innerHTML = escapeHtml(t.category)+'<span class="badge" style="color:var(--muted);background:rgba(135,146,162,.14)">ไม่หักคงเหลือ</span>';
         else nm.textContent = t.category;
         row.appendChild(nm); row.appendChild(inp);
       }
@@ -610,15 +683,19 @@ function recalcWorksheet(){
   }
   const inc = groupTotal('income', viewMonth);
   const savAll = groupTotal('saving', viewMonth);
-  const exp = groupTotal('expense', viewMonth);
+  const expAll = groupTotal('expense', viewMonth);
   const savDed = deductedSaving(viewMonth);   // สหกรณ์ + กบข.
   const savOther = savAll - savDed;           // สลาก/บัญชี — ไม่หักจากคงเหลือ
+  const expDed = deductedExpense(viewMonth);  // รายจ่ายจริง
+  const expOther = expAll - expDed;           // เพื่อนยืม/ลูกหนี้ — ไม่หักจากคงเหลือ
   setText('sub-income', '+'+fmtMoney(inc));
   const savEl = document.getElementById('sub-saving');
   if (savEl) savEl.innerHTML = '−'+escapeHtml(fmtMoney(savDed)) +
     (savOther>0 ? ' <span style="color:var(--muted);font-weight:500">· ออม '+escapeHtml(fmtMoney(savOther))+'</span>' : '');
-  setText('sub-expense', '−'+fmtMoney(exp));
-  const bal = inc - savDed - exp;             // หักเฉพาะเงินออมที่หักจากรายรับ
+  const expEl = document.getElementById('sub-expense');
+  if (expEl) expEl.innerHTML = '−'+escapeHtml(fmtMoney(expDed)) +
+    (expOther>0 ? ' <span style="color:var(--muted);font-weight:500">· ลูกหนี้ '+escapeHtml(fmtMoney(expOther))+'</span>' : '');
+  const bal = inc - savDed - expDed;          // หักเฉพาะเงินออม/รายจ่ายที่หักจากคงเหลือ
   const bv = document.getElementById('wsBalanceVal');
   bv.textContent = (bal<0?'−':'')+'฿'+fmtMoney(Math.abs(bal));
   bv.style.color = bal < 0 ? 'var(--expense)' : 'var(--gold)';
@@ -721,15 +798,15 @@ function resetEntry(){
 /* ================= สลับหน้า / เดือน ================= */
 function switchView(v){
   currentView = v;
-  ['worksheet','entry','history','recurring','summary'].forEach(x => {
+  ['worksheet','entry','history','recurring','debtors','summary'].forEach(x => {
     document.getElementById('view-'+x).classList.toggle('active', x===v);
     const nb = document.getElementById('nav-'+x); if (nb) nb.classList.toggle('on', x===v);
   });
-  // แท็บ "ประจำ" ไม่มีปุ่มจากหน้าเดือนนี้ ให้ไฮไลต์ที่ nav-recurring เอง
   if (v==='worksheet') renderWorksheet();
   if (v==='history') renderHistory();
   if (v==='summary') renderSummary();
   if (v==='recurring'){ closeRecurForm(); renderRecurList(); }
+  if (v==='debtors'){ closeDebtorForm(); renderDebtors(); }
   window.scrollTo(0,0);
 }
 function shiftMonth(d){
@@ -746,7 +823,7 @@ function renderHistory(){
   document.getElementById('monthLabelH').textContent = thaiMonth(viewMonth);
   const list = document.getElementById('historyList');
   // ไม่แสดงรายการยอด 0 เพื่อไม่ให้รก
-  const recs = activeRecords().filter(r => recYm(r) === viewMonth && Number(r.amount) !== 0);
+  const recs = activeRecords().filter(r => recYm(r) === viewMonth && Number(r.amount) !== 0 && !NO_DEDUCT.has(tmplId(r)));
   if (!recs.length){ list.innerHTML = '<div class="empty">ยังไม่มีรายการในเดือนนี้</div>'; return; }
   const byDate = {};
   recs.forEach(r => { const d = recDate(r); (byDate[d] = byDate[d]||[]).push(r); });
@@ -790,9 +867,10 @@ function renderSummary(){
   ensureMonth(viewMonth);
   const t = monthTotals(viewMonth);
   const savDed = deductedSaving(viewMonth);
-  const net = t.income - savDed - t.expense;
+  const expDed = deductedExpense(viewMonth);
+  const net = t.income - savDed - expDed;
   document.getElementById('sumIn').textContent = '฿'+fmtMoney(t.income);
-  document.getElementById('sumEx').textContent = '฿'+fmtMoney(t.expense);
+  document.getElementById('sumEx').textContent = '฿'+fmtMoney(expDed);
   document.getElementById('sumSv').textContent = '฿'+fmtMoney(t.saving);
   document.getElementById('sumOut').textContent = '฿'+fmtMoney(savDed);
   const netEl = document.getElementById('sumNet');
@@ -805,7 +883,7 @@ function renderCatBreakdown(){
   const box = document.getElementById('catBreakdown');
   const sums = {};
   records.forEach(r => {
-    if (r.deleted || r.type!=='expense' || recYm(r) !== viewMonth) return;
+    if (r.deleted || r.type!=='expense' || recYm(r) !== viewMonth || NO_DEDUCT.has(tmplId(r))) return;
     const v = Number(r.amount)||0; if (v===0) return;
     sums[r.category] = (sums[r.category]||0) + v;
   });
@@ -962,9 +1040,89 @@ function renderRecurList(){
   });
 }
 
+/* ================= ลูกหนี้ (ยอดค้าง ไม่ผูกกับเดือน) ================= */
+let debtorEditId = null;
+function debtorTotals(){
+  let owe = 0, paid = 0, count = 0;
+  debtors.forEach(d => { if (d.deleted) return; if (d.paid){ paid += Number(d.amount)||0; } else { owe += Number(d.amount)||0; count++; } });
+  return { owe, paid, count };
+}
+function renderDebtors(){
+  const t = debtorTotals();
+  document.getElementById('debtorOweVal').textContent = '฿'+fmtMoney(t.owe);
+  document.getElementById('debtorSub').textContent = t.count ? ('ค้างอยู่ '+t.count+' รายการ'+(t.paid?' · คืนแล้ว '+fmtMoney(t.paid):'')) : (t.paid?'คืนแล้วทั้งหมด '+fmtMoney(t.paid):'ยังไม่มีลูกหนี้');
+  const box = document.getElementById('debtorList');
+  const arr = [...debtors.values()].filter(d => !d.deleted)
+    .sort((a,b) => (a.paid?1:0)-(b.paid?1:0) || String(b.date||'').localeCompare(String(a.date||'')) || String(b.updated_at).localeCompare(String(a.updated_at)));
+  if (!arr.length){ box.innerHTML = '<div class="empty" style="padding:40px 20px">ยังไม่มีลูกหนี้<br>กดปุ่มด้านล่างเพื่อเพิ่มคนที่ค้างเงินเรา</div>'; return; }
+  box.innerHTML = '';
+  arr.forEach(d => {
+    const el = document.createElement('div'); el.className = 'debtorItem'+(d.paid?' paid':'');
+    el.innerHTML =
+      '<div class="dinfo"><b>'+escapeHtml(d.name)+'</b><small>'+
+      (d.date?escapeHtml(thaiDate(d.date)):'')+(d.note?(d.date?' · ':'')+escapeHtml(d.note):'')+(d.paid?' · คืนแล้ว':'')+'</small></div>'+
+      '<div class="damt">'+fmtMoney(d.amount)+'</div>';
+    const info = el.querySelector('.dinfo'); info.onclick = () => openDebtorForm(d.id);
+    el.querySelector('.damt').onclick = () => openDebtorForm(d.id);
+    box.appendChild(el);
+  });
+}
+function openDebtorForm(id){
+  debtorEditId = id || null;
+  const d = id ? debtors.get(id) : null;
+  document.getElementById('debtorFormTitle').textContent = id ? 'แก้ไขลูกหนี้' : 'เพิ่มลูกหนี้';
+  document.getElementById('dName').value = d ? d.name : '';
+  document.getElementById('dAmount').value = d ? d.amount : '';
+  document.getElementById('dDate').value = d ? (d.date||'') : todayStr();
+  document.getElementById('dNote').value = d ? (d.note||'') : '';
+  const paidBtn = document.getElementById('dPaidBtn');
+  paidBtn.classList.toggle('on', !!(d && d.paid));
+  paidBtn.textContent = (d && d.paid) ? '✓ คืนแล้ว' : 'ทำเครื่องหมายว่าคืนแล้ว';
+  document.getElementById('dDelete').style.display = id ? 'block' : 'none';
+  document.getElementById('debtorForm').classList.add('show');
+  document.getElementById('addDebtorBtn').style.display = 'none';
+  document.getElementById('debtorForm').scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+function closeDebtorForm(){
+  document.getElementById('debtorForm').classList.remove('show');
+  document.getElementById('addDebtorBtn').style.display = 'block';
+  debtorEditId = null;
+}
+function toggleDebtorPaidBtn(){
+  const b = document.getElementById('dPaidBtn');
+  const on = !b.classList.contains('on');
+  b.classList.toggle('on', on);
+  b.textContent = on ? '✓ คืนแล้ว' : 'ทำเครื่องหมายว่าคืนแล้ว';
+}
+function saveDebtor(){
+  const name = document.getElementById('dName').value.trim();
+  if (!name) return toast('ใส่ชื่อลูกหนี้ก่อน');
+  const amt = parseFloat(document.getElementById('dAmount').value) || 0;
+  if (amt <= 0) return toast('ใส่จำนวนเงินก่อน');
+  const paid = document.getElementById('dPaidBtn').classList.contains('on') ? 1 : 0;
+  let d;
+  if (debtorEditId && debtors.has(debtorEditId)) d = Object.assign({}, debtors.get(debtorEditId));
+  else d = { id:(crypto.randomUUID?crypto.randomUUID():'d-'+Date.now()+'-'+Math.random().toString(16).slice(2)), deleted:0 };
+  Object.assign(d, { name, amount:amt, date:document.getElementById('dDate').value||todayStr(),
+    note:document.getElementById('dNote').value.trim(), paid, updated_at:nowTs(), _dirty:1 });
+  debtors.set(d.id, d); idbPut('debtors', d);
+  const edit = !!debtorEditId;
+  closeDebtorForm(); renderDebtors();
+  toast(edit ? 'บันทึกแล้ว' : 'เพิ่มลูกหนี้แล้ว');
+  updateSyncUI(); syncNow();
+}
+function deleteDebtor(){
+  if (!debtorEditId || !debtors.has(debtorEditId)) return;
+  if (!confirm('ลบลูกหนี้รายนี้?')) return;
+  const d = Object.assign({}, debtors.get(debtorEditId), { deleted:1, updated_at:nowTs(), _dirty:1 });
+  debtors.set(d.id, d); idbPut('debtors', d);
+  closeDebtorForm(); renderDebtors();
+  toast('ลบแล้ว'); updateSyncUI(); syncNow();
+}
+
 /* ================= ซิงก์ ================= */
 function gasConfigured(){ return /^https:\/\/script\.google\.com\//.test(GAS_URL); }
-function pendingCount(){ return [...records.values(), ...recurring.values()].filter(r => r._dirty).length; }
+function pendingCount(){ return [...records.values(), ...recurring.values(), ...debtors.values()].filter(r => r._dirty).length; }
 
 async function syncNow(manual){
   if (!gasConfigured()){ updateSyncUI(); if(manual) toast('ยังไม่ได้ตั้งค่า GAS_URL'); return; }
@@ -975,8 +1133,9 @@ async function syncNow(manual){
     const strip = r => { const c=Object.assign({}, r); delete c._dirty; return c; };
     const changes = [...records.values()].filter(r=>r._dirty).map(strip);
     const recurChanges = [...recurring.values()].filter(r=>r._dirty).map(strip);
+    const debtorChanges = [...debtors.values()].filter(r=>r._dirty).map(strip);
     const res = await fetch(GAS_URL, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-      body: JSON.stringify({ token:TOKEN, action:'sync', changes, recurChanges }) });
+      body: JSON.stringify({ token:TOKEN, action:'sync', changes, recurChanges, debtorChanges }) });
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || 'sync failed');
     const merge = (serverArr, localMap) => {
@@ -988,13 +1147,16 @@ async function syncNow(manual){
     };
     records = merge(data.records, records);
     recurring = merge(data.recurring, recurring);
+    debtors = merge(data.debtors, debtors);
     await idbReplaceAll('records', [...records.values()]);
     await idbReplaceAll('recurring', [...recurring.values()]);
+    await idbReplaceAll('debtors', [...debtors.values()]);
     materializeRecurring();
     if (currentView==='worksheet') renderWorksheet();
     if (currentView==='recurring') renderRecurList();
     if (currentView==='history') renderHistory();
     if (currentView==='summary') renderSummary();
+    if (currentView==='debtors') renderDebtors();
     if (manual) toast('ซิงก์เรียบร้อย');
   } catch(e){
     if (manual) toast('ซิงก์ไม่สำเร็จ: '+(e.message||e));
@@ -1027,11 +1189,13 @@ function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;',
   resetEntry();
   if (!gasConfigured()) document.getElementById('setupBanner').style.display = 'block';
   try {
-    const [recs, recs2] = await Promise.all([idbAll('records'), idbAll('recurring')]);
+    const [recs, recs2, recs3] = await Promise.all([idbAll('records'), idbAll('recurring'), idbAll('debtors')]);
     records = new Map(recs.map(r=>[r.id, r]));
     recurring = new Map(recs2.map(r=>[r.id, r]));
+    debtors = new Map(recs3.map(r=>[r.id, r]));
   } catch(e){}
   seedDefaults();            // ใส่รายการประจำตั้งต้นครั้งแรก (idempotent ด้วย ID ตายตัว)
+  migrateFriendLoan();       // ย้ายเพื่อนยืมเดิมออกจาก worksheet ไปแท็บลูกหนี้
   materializeRecurring();    // เติมยอดเดือนปัจจุบัน/ย้อนหลัง แม้เปิดออฟไลน์
   renderWorksheet();
   updateSyncUI();
