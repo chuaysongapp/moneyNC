@@ -54,11 +54,11 @@ main{flex:1; padding:0 16px 108px}
   padding:10px 12px 10px 14px; margin-bottom:6px}
 .wsRow .nm{flex:1; min-width:0; font-size:14.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .wsRow .nm .badge{font-size:11px; color:var(--saving); background:rgba(90,169,230,.14); padding:1px 7px; border-radius:99px; margin-left:6px; white-space:nowrap}
-.wsRow input{width:112px; flex:0 0 auto; text-align:right; background:var(--bg); border:1px solid var(--line);
+.wsRow input{width:126px; flex:0 0 auto; text-align:right; background:var(--bg); border:1px solid var(--line);
   border-radius:10px; padding:9px 11px; font-size:15.5px; color:var(--text); font-variant-numeric:tabular-nums}
 .wsRow input:focus{outline:none; border-color:var(--gold-dim)}
 .wsRow input.income:focus{border-color:var(--income)}
-.wsRow .ro{width:112px; flex:0 0 auto; text-align:right; padding:9px 11px; font-size:15.5px;
+.wsRow .ro{width:126px; flex:0 0 auto; text-align:right; padding:9px 11px; font-size:15.5px;
   color:var(--saving); font-variant-numeric:tabular-nums; font-weight:600}
 .wsRow.adhoc{background:transparent; border:1px dashed var(--line); padding:9px 12px 9px 14px}
 .wsRow.adhoc .nm{color:var(--muted); font-size:13.5px}
@@ -686,11 +686,14 @@ function renderWorksheet(){
           '<div class="ro" id="ro-'+t.id+'">'+fmtMoney(amt)+'</div>';
       } else {
         const inp = document.createElement('input');
-        inp.type = 'number'; inp.inputMode = 'decimal'; inp.step = '0.01'; inp.value = amt ? amt : '';
-        inp.placeholder = '0';
+        inp.type = 'text'; inp.inputMode = 'decimal';
+        inp.value = amt ? fmtMoney(amt) : '';           // ไม่ได้แก้ = โชว์ 3,000.00
+        inp.placeholder = '0.00';
         if (type === 'income') inp.className = 'income';
+        inp.addEventListener('focus', () => { const v = parseFloat(inp.value.replace(/,/g,'')); inp.value = v ? String(v) : ''; inp.select(); });
         inp.addEventListener('input', () => onWsInput(t.id, inp.value));
         inp.addEventListener('change', () => onWsChange(t.id, inp.value));
+        inp.addEventListener('blur', () => { const v = parseFloat(inp.value.replace(/,/g,''))||0; inp.value = v ? fmtMoney(v) : ''; });
         const nm = document.createElement('div'); nm.className = 'nm';
         if (type === 'saving' && SAVING_DEDUCT.has(t.id))
           nm.innerHTML = escapeHtml(t.category)+'<span class="badge">หักจากรายรับ</span>';
@@ -717,7 +720,7 @@ function onWsInput(tid, val){
   // อัปเดตในหน่วยความจำ + คำนวณยอดสด (ยังไม่เขียน IDB)
   const id = 'r_'+tid+'_'+viewMonth;
   const r = records.get(id);
-  const amt = parseFloat(val) || 0;
+  const amt = parseFloat(String(val).replace(/,/g,'')) || 0;
   if (r){ r.amount = amt; } // แก้ค่าใน object ตรงๆ ชั่วคราว
   const t = recurring.get(tid);
   if (t && t.type === 'income'){ recomputeAutoDisplay(); }
@@ -726,7 +729,7 @@ function onWsInput(tid, val){
 function onWsChange(tid, val){
   const id = 'r_'+tid+'_'+viewMonth;
   const t = recurring.get(tid);
-  const amt = parseFloat(val) || 0;
+  const amt = parseFloat(String(val).replace(/,/g,'')) || 0;
   let r = records.get(id);
   if (r){
     r = Object.assign({}, r, { amount:amt, updated_at:nowTs(), _dirty:1 });
