@@ -123,6 +123,9 @@ main{flex:1; padding:0 16px 108px}
 .cards{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px}
 .card{background:var(--surface); border-radius:var(--radius); padding:15px 16px}
 .card.wide{grid-column:1/-1; border:1px solid var(--gold-dim); background:linear-gradient(160deg,#1a1608,var(--surface) 55%)}
+.card.tap{cursor:pointer; border:1px solid var(--line)}
+.card.tap:active{background:var(--surface2)}
+.card.tap small{color:var(--saving)}
 .card small{color:var(--muted); font-size:13px; display:block; margin-bottom:5px}
 .card .v{font-size:20px; font-weight:700; font-variant-numeric:tabular-nums}
 .card.wide .v{font-size:28px; color:var(--gold)}
@@ -374,8 +377,10 @@ nav button.on{color:var(--gold)}
         <div class="card wide"><small>คงเหลือเดือนนี้</small><div class="v" id="sumNet">฿0</div></div>
         <div class="card"><small>รายรับ</small><div class="v in" id="sumIn">฿0</div></div>
         <div class="card"><small>รายจ่าย</small><div class="v ex" id="sumEx">฿0</div></div>
-        <div class="card"><small>เงินออม</small><div class="v sv" id="sumSv">฿0</div></div>
-        <div class="card"><small>หักจากเงินเดือน (สหกรณ์+กบข.)</small><div class="v" id="sumOut">฿0</div></div>
+        <div class="card"><small>เงินออม (ไม่รวมสหกรณ์/กบข.)</small><div class="v sv" id="sumSv">฿0</div></div>
+        <div class="card"><small>หักเดือนนี้ (สหกรณ์+กบข.)</small><div class="v" id="sumOut">฿0</div></div>
+        <div class="card tap" onclick="editBase('coop')"><small>หุ้นสหกรณ์ (สะสม) ✎</small><div class="v sv" id="sumCoop">฿0</div></div>
+        <div class="card tap" onclick="editBase('gpf')"><small>กบข. (สะสม) ✎</small><div class="v sv" id="sumGpf">฿0</div></div>
       </div>
       <div class="panel"><h3>ย้อนหลัง 6 เดือน</h3><canvas id="chart"></canvas>
         <div class="chartLegend"><span><i style="background:var(--income)"></i>รายรับ</span><span><i style="background:var(--expense)"></i>รายจ่าย</span><span><i style="background:var(--saving)"></i>เงินออม</span></div>
@@ -511,6 +516,23 @@ function savingDeducts(r){ return SAVING_DEDUCT.has(tmplId(r)); }
 function deductedSaving(ym){ let s = 0; records.forEach(r => { if (!r.deleted && r.type==='saving' && recYm(r)===ym && savingDeducts(r)) s += Number(r.amount)||0; }); return s; }
 /* ผลรวมรายจ่ายที่หักจากคงเหลือ (ไม่รวมรายการใน NO_DEDUCT เช่น เพื่อนยืม) */
 function deductedExpense(ym){ let s = 0; records.forEach(r => { if (!r.deleted && r.type==='expense' && recYm(r)===ym && !NO_DEDUCT.has(tmplId(r))) s += Number(r.amount)||0; }); return s; }
+/* ยอดสะสม: ยอดตั้งต้น + รวมยอดของ template นั้นทุกเดือนจนถึง ym */
+function baseCoop(){ const v=localStorage.getItem('nc_base_coop'); return v==null?129000:(Number(v)||0); }
+function baseGpf(){ const v=localStorage.getItem('nc_base_gpf'); return v==null?0:(Number(v)||0); }
+function cumulativeUpTo(templateId, baseline, ym){
+  let s = baseline;
+  records.forEach(r => { if (!r.deleted && tmplId(r)===templateId && recYm(r) <= ym) s += Number(r.amount)||0; });
+  return s;
+}
+function editBase(which){
+  const isCoop = which==='coop';
+  const cur = isCoop ? baseCoop() : baseGpf();
+  const v = prompt('ยอดตั้งต้น'+(isCoop?'หุ้นสหกรณ์':' กบข.')+' (บาท) — ยอดสะสมก่อนเริ่มใช้แอป', cur);
+  if (v==null) return;
+  const n = parseFloat(String(v).replace(/,/g,'')) || 0;
+  localStorage.setItem(isCoop?'nc_base_coop':'nc_base_gpf', String(n));
+  renderSummary();
+}
 /* คืนวันที่ YYYY-MM-DD ที่สะอาด (กู้จาก ISO ที่เพี้ยนโซนเวลา ถ้าจำเป็น) */
 function recDate(r){
   const d = String(r.date);
@@ -545,7 +567,7 @@ function idbPut(store, rec){ return tx(store,'readwrite').then(st => new Promise
 function idbReplaceAll(store, arr){ return tx(store,'readwrite').then(st => new Promise((res,rej)=>{ const c=st.clear(); c.onsuccess=()=>{ arr.forEach(r=>st.put(r)); st.transaction.oncomplete=res; }; c.onerror=()=>rej(c.error); })); }
 
 /* ================= รูปแบบตัวเลข/วันที่ ================= */
-function fmtMoney(n){ return Number(n).toLocaleString('th-TH', { minimumFractionDigits:0, maximumFractionDigits:2 }); }
+function fmtMoney(n){ return Number(n).toLocaleString('th-TH', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
 function thaiDate(dstr){ try{ return new Date(dstr+'T00:00:00').toLocaleDateString('th-TH-u-ca-buddhist',{ weekday:'short', day:'numeric', month:'short', year:'2-digit' }); }catch(e){ return dstr; } }
 function thaiMonth(ym){ try{ return new Date(ym+'-01T00:00:00').toLocaleDateString('th-TH-u-ca-buddhist',{ month:'long', year:'numeric' }); }catch(e){ return ym; } }
 
@@ -924,8 +946,10 @@ function renderSummary(){
   const net = t.income - savDed - expDed;
   document.getElementById('sumIn').textContent = '฿'+fmtMoney(t.income);
   document.getElementById('sumEx').textContent = '฿'+fmtMoney(expDed);
-  document.getElementById('sumSv').textContent = '฿'+fmtMoney(t.saving);
+  document.getElementById('sumSv').textContent = '฿'+fmtMoney(t.saving - savDed);   // เงินออมไม่รวมสหกรณ์/กบข.
   document.getElementById('sumOut').textContent = '฿'+fmtMoney(savDed);
+  document.getElementById('sumCoop').textContent = '฿'+fmtMoney(cumulativeUpTo('seed_15', baseCoop(), viewMonth));
+  document.getElementById('sumGpf').textContent = '฿'+fmtMoney(cumulativeUpTo('seed_16', baseGpf(), viewMonth));
   const netEl = document.getElementById('sumNet');
   netEl.textContent = (net<0?'−':'')+'฿'+fmtMoney(Math.abs(net));
   netEl.style.color = net<0?'var(--expense)':'var(--gold)';
